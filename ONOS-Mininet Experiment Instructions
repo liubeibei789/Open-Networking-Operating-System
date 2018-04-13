@@ -1,0 +1,241 @@
+ONOS-Mininet Experiment Instructions
+(Experiment for the middleware connecting power and water systems)
+edit by: Beibei Liu (liubeibei789@gmail.com)
+last modified: 12/2017
+
+This file contains instructions on how to install and run our program on ONOS-Mininet platform.
+ONOS is installed on host machine, Mininet is installed on virtualBox.
+host machine: Ubuntu 16.04 LTS (7.8 GiB, Intel® Core™ i5-2400 CPU @ 3.10GHz × 4, 64-bit)
+virtualBox: Oracle VM VirtualBox (use the default: Base memory 768MB, mininet-vm-x86_64.vmdk(8.00GB))
+
+You should be able to reproduce the experiment if following instructions below.
+Please feel free to contact me if there is any error or question.
+
+####################################### installation ###########################################
+################################################################################################
+ 
+================================== Mininet installation =========================================
+==============================================================================================
+It is assumed that the Oracle VM VirtualBox has already been installed properly on the host machine.
+Download the mininet virtual image from github
+->setting->Storage:
+Controller: IDE: VBoxGuestAdditions.iso (for shared folder)
+Controller: SATA: mininet-vm-x86_64.vmdk
+->setting->Network:
+adapter 1: check enable network adapter, attached to: bridged adapter(Name: enp5s0), advanced: promiscuous mode: allow all
+Note: bridged gives each host a separate ip address when talking to outside ips, but NAT doesn't.
+adapter 2: check enable network adapter，attached to: host-only adapter(Name: vboxnet), advanced: promiscuous mode: allow all
+
+================================== ONOS installation =========================================
+==============================================================================================
+(acknowledge: http://blog.csdn.net/dragonfli_lee/article/details/52144636 for the installation process)
+1. install environment dependencies:
+Please pay attention to the versions of different applications for compatibility issues (check website when downloading).
+If you are using the different versions with me, please put your version numbers accordingly.
+
+1.1. install Apache-Karaf:
+beibei@beibei-OptiPlex-390:~$ sudo -i                (accessing /root directory needs administrator permission)
+root@beibei-OptiPlex-390:~# mkdir /root/Applications (because in onos source code, bash_profile put the apache-karaf in /root/Applications directory)
+root@beibei-OptiPlex-390:~# cd /root/Applications  
+root@beibei-OptiPlex-390:~# wget http://archive.apache.org/dist/karaf/4.0.5/apache-karaf-4.0.5.tar.gz (this is the link for downloading apache-karaf，choose binary file)
+root@beibei-OptiPlex-390:~# tar -xzf apache-karaf-4.0.5.tar.gz  
+
+1.2. install apache-maven:
+Download the package to any directory you like, as it will be moved to /usr/local at last
+# wget http://apache.mirrors.pair.com/maven/maven-3/3.5.2/binaries/apache-maven-3.5.2-bin.tar.gz (this is the link for downloading apache-maven)
+# tar -xzf apache-maven-3.5.2-bin.tar.gz
+# mv apache-maven-3.5.2 /usr/local/apache-maven (not sure why moving to /usr/local? must be the same directory with java jdk?)
+
+1.3. install Java 8:
+Download the package (jdk-8u151-linux-x64.tar.gz) to any directory you like
+# tar -zxvf jdk-8u151-linux-x64.tar.gz    (a folder jdk1.8.0_151 appears after decompression)
+# mv jdk1.8.0_151 /usr/local/             (move to /usr/local)
+
+1.4. set environment variables:
+Put the following environment variables at the end of the /etc/bash.bashrc
+root@beibei-OptiPlex-390:~# vim /etc/bash.bashrc
+export JAVA_HOME=/usr/local/jdk1.8.0_151
+export JRE_HOME=${JAVA_HOME}/jre
+export CLASSPATH=.:${JAVA_HOME}/lib:${JRE_HOME}/lib
+export PATH=${JAVA_HOME}/bin:$PATH
+root@beibei-OptiPlex-390:~# source /etc/bash.bashrc   (let bash file come into effect at once)
+
+Put the following environment variables at the end of the /usr/profile
+root@beibei-OptiPlex-390:~# vim /etc/profile
+export M2_HOME=/usr/local/apache-maven
+export PATH=$PATH:$M2_HOME/bin
+export JAVA_HOME=/usr/local/jdk1.8.0_151
+export JRE_HOME=${JAVA_HOME}/jre
+export CLASSPATH=.:${JAVA_HOME}/lib:${JRE_HOME}/lib
+export PATH=${JAVA_HOME}/bin:$PATH
+root@beibei-OptiPlex-390:~# source/etc/profile
+
+Reboot the host machine, check if the environment dependencies are set correctly.
+beibei@beibei-OptiPlex-390:~$ java -version
+beibei@beibei-OptiPlex-390:~$ mvn --version
+If the printed java version coincide, then the environment dependencies are set correctly.
+
+2. install and run ONOS:
+2.1. download the source code:
+Download the package (onos-master.zip from github) to any directory you like, I put it in /home.
+Rename the onos-master to onos for convenience
+Set $ONOS_ROOT and $KARAF_ROOT
+Put the following lines at the end of the /etc/profile
+beibei@beibei-OptiPlex-390:~# cd /etc/profile
+export ONOS_ROOT=/home/onos
+export KARAF_ROOT=/root/Applications/apache-karaf-4.0.5
+beibei@beibei-OptiPlex-390:~# source /etc/profile
+
+Additionally, another bash file needs attentions: 
+beibei@beibei-OptiPlex-390:~# vim onos/tools/dev/bash_profile
+This file is about 90 lines, check the followings (most are at first part):
+version numbers for karaf, maven, and java are consistent (respectively)
+environment variables directories are correct
+(note that e.g.command ok for Onos-Karaf is defined in this file)
+beibei@beibei-OptiPlex-390:~# source onos/tools/dev/bash_profile 
+
+*Note:To avoid typing this source command for each shell session, 
+put the following line to the end of the ~/.bashrc (user shell script run at beginning of every new shell)
+beibei@beibei-OptiPlex-390:~$ vim ~/.bashrc  
+source ${ONOS_ROOT}/tools/dev/bash_profile
+
+Finally, in /usr/local directory: there are jdk1.8.0_151 and apache-maven folders (and many others as well of course)
+in /root/Applications directory: there are apache-karaf-4.0.5
+Note: the apache-karaf-4.0.5.tar.gz and apache-maven-3.5.2-bin.tar.gz must be kept in /Downloads directory 
+(otherwise there are errors in the following steps, not sure why)
+
+2.2. build the ONOS:
+beibei@beibei-OptiPlex-390:~# cd onos (the root directory of the onos)
+beibei@beibei-OptiPlex-390:~# mvn clean install
+This process takes about 15 minutes, please wait and watch:
+if some modules fail, for example onos-driver-microsemi fails
+then open onos source code, modify pom.xml file of the parent directory of the failed module (in this case /driver),
+comment out: <module> onos-driver-microsemi </module> (<!-- <module> onos-driver-microsemi </module> -->),
+then skip this failed module, continue with the next module in the list,
+beibei@beibei-OptiPlex-390:~# mvn clean install -rf :onos-app-acl (a space before:, no space after:)
+Repeat this for all failed modules until build success shows up
+
+2.3. configure the ONOS:
+beibei@beibei-OptiPlex-390:~# cd
+beibei@beibei-OptiPlex-390:~# vim $KARAF_ROOT/etc/org.apache.karaf.features.cfg 
+Add the follwing line to featuresRepositories:
+mvn:org.onosproject/onos-features/1.12.0-SNAPSHOT/xml/features (1.12.0-SNAPSHOT is the onos snapshot version number I use)
+Add the follwing features to featuresBoot:
+onos-api,onos-core-trivial,onos-cli,onos-openflow,onos-app-fwd,onos-app-mobility,onos-gui
+Those features are modules with some basic functions (API, CLI, GUI, etc.), loaded at the start of onos
+
+
+
+####################################### run mininet ############################################
+################################################################################################
+
+click to run mininet in Oracle VM VirtualBox, wait until the login page
+mininet-vm login: mininet, password: mininet
+mininet@mininet-vm$:~$ifconfig
+mininet@mininet-vm$:~$sudo dhclient eth1
+mininet@mininet-vm$:~$ifconfig
+
+ssh into mininet from host machine:
+open a new terminal on host machine:
+beibei@beibei-OptiPlex-390:~$ssh -Y mininet@192.168.56.101
+mininet@192.168.56.101's password:mininet
+
+mininet@mininet-vm:~$ python mininet/examples/miniedit.py
+Then a GUI for topology shows up
+Drag the controller, switches, and hosts, save to L2 topology to /mininet/mininet/custom directory (or anywhere you like)
+mininet@mininet-vm:~$ cd mininet/mininet/custom
+mininet@mininet-vm:~$ sudo vi ./mytopo.py (can modify python code)
+mininet@mininet-vm:~$ sudo python ./mytopo.py
+Or just type command in CLI:
+mininet@mininet-vm:~$ sudo mn --topo single,3 --controller=remote,ip=192.168.56.1,port=6633 (no space between remote and ip)
+
+Open a terminal for a host:
+mininet> xterm h1
+
+mininet> h1 ping -c3 h2
+mininet> link s1 s11 down (or up)
+
+
+
+####################################### run ONOS ###############################################
+################################################################################################
+
+1. Start ONOS：
+beibei@beibei-OptiPlex-390:~$ cd onos
+beibei@beibei-OptiPlex-390:~$ karaf clean (or # ok clean or # ok)
+There will be a lot of messages printed. Keep this terminal and open another new terminal 
+beibei@beibei-OptiPlex-390:~$ cd onos
+beibei@beibei-OptiPlex-390:~$ onos localhost (or onos 10.206.201.118)
+10.206.201.118 is the ip address of host machine network interface enp5s0 (set as bridged adapter in Mininet)
+If a large red logo ONOS appears, with onos> CLI, then onos runs successfully.
+
+ONOS web GUI:
+http://localhost:8181/onos/ui/index.html  (localhost can also be ip address of host machine:10.206.201.118)
+login: karaf, password: karaf
+
+Check port 6633 and port 8181 to see if they are listening:
+beibei@beibei-OptiPlex-390:~$ netstat -anput | grep 6633  (or 8181)
+
+In ONOS CLI:
+onos> flows (or devices, or hosts, or links)
+
+onos> apps -a -s (show all active apps)
+
+2. Add our own program to ONOS:
+2.1. build the code:
+Create our own application from template:
+beibei@beibei-OptiPlex-390:~$ mvn archetype:generate -DarchetypeGroupId=org.onosproject -DarchetypeArtifactId=onos-bundle-archetype
+'groupId': org.onosproject
+'artifactId': onos-app
+'version':  1.12.0-SNAPSHOT
+'package':  org.onosproject: : org.onosproject.app
+Then write the code in IDE (e.g.IntelliJ). When bug free, move the ifwd folder under $ONOS_ROOT/apps directory
+Edit pom.xml file of the $ONOS_ROOT/apps directory:
+Add <module>onos-app-ifwd</module> to the module section
+
+Build the app:
+beibei@beibei-OptiPlex-390:~$ cd $ONOS_ROOT/apps/ifwd
+beibei@beibei-OptiPlex-390:~$ mvn build
+beibei@beibei-OptiPlex-390:~$ mvn clean install
+
+2.2. install the app:
+Dynamic method:
+onos> feature:uninstall onos-app-fwd
+onos> feature:install onos-app-ifwd
+Static method:(recommended)
+beibei@beibei-OptiPlex-390:onos/apps/ifwd:~$ onos-app localhost install target/onos-app-ifwd-1.12.0-SNAPSHOT.oar
+onos-app-ifwd-1.12.0-SNAPSHOT is the file name and onos snapshot version
+Edit the features:
+beibei@beibei-OptiPlex-390:~$ vi $KARAF_ROOT/etc/org.apache.karaf.feature.cfg
+Add the follwing features to featuresBoot: onos-app-ifwd
+
+2.2. Activate the app:
+onos> app deactivate org.onosproject.fwd
+onos> app activate org.onosproject.ifwd
+Verify that the application is active:
+onos> onos:apps | grep sdx-l2
+Intents:
+onos> intents
+
+onos> remove-intent org.onosproject.ifwd <TAB>
+onos> purge-intents
+
+
+Add static host intents for bi-directional communication between two hosts. This translates to two unidirectional path rules.
+onos> add-host-intent 00:00:00:00:00:01/-1 00:00:00:00:00:02/-1 
+onos> add-host-intent 00:00:00:00:00:02/-1 00:00:00:00:00:01/-1 
+
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+edit the mytopo.py:
+change Controller to RemoteController
+add item ip after controller:
+ip="192.168.56.1", (remember the "" and ,)
+
+
+onos/apps/ifwd:~$ onos-app localhost install target/onos-app-ifwd-1.12.0-SNAPSHOT.oar
+
+app activate org.onosproject.sdnip
+app activate org.onosproject.reactive-routing
+
+
+

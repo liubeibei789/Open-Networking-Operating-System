@@ -1,2 +1,2 @@
-# Open-Networking-Operating-System
-an SDN operating system for communications 
+# ONOS
+A new carrier-grade SDN network operating system 
